@@ -1,20 +1,17 @@
-"use stric";
 
 var canvas;
 var gl;
 var prg;
 var vertexBuffer = null;
-var indexBuffer = null;
-var colorBuffer = null;
-var indices = [];
-var vertices = [];
-var colors = [];
+
 var mvMatrix = mat4.create();
 var pMatrix = mat4.create();
+var repMatrix = mat3.create();
 
 window.onload = function() {
     canvas = document.getElementById('glcanvas');
     gl=null;
+
     try {
         gl = WebGLDebugUtils.makeDebugContext(canvas.getContext("webgl"));
         gl.viewportWidth = canvas.width;
@@ -27,7 +24,7 @@ window.onload = function() {
     }
     initProgram();
     initBuffers();
-    renderLoop();
+    drawScene();
 };
 
 function initProgram() {
@@ -50,6 +47,8 @@ function initProgram() {
 
     prg.pMatrixUniform          = gl.getUniformLocation(prg, 'uPMatrix');
     prg.mvMatrixUniform         = gl.getUniformLocation(prg, 'uMVMatrix');
+    prg.repMatrixUniform        = gl.getUniformLocation(prg, 'uRepMatrix');
+    prg.alphaUniform            = gl.getUniformLocation(prg, 'uAlpha');
 
 }
 
@@ -86,17 +85,12 @@ function getShader(gl, id) {
     return shader;
 }
 
-function renderLoop() {
-    requestAnimFrame(renderLoop);
-    drawScene();
-}
-
 function initBuffers(){
-    vertices = [
+    var vertices = [
         -1.0, -1.0,
         +1.0, -1.0,
         -1.0, +1.0,
-        +1.0, +1.0,
+        +1.0, +1.0
     ];
 
     vertexBuffer = gl.createBuffer();
@@ -112,13 +106,20 @@ function drawScene(){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
+    var fov = 70;
+    var alpha = Math.tan(fov/2*Math.PI/180);
+
     mat4.identity(pMatrix);
-    mat4.perspective(pMatrix, degToRad(70), gl.viewportWidth / gl.viewportHeight, 1.0, 1000.0);
+    mat4.perspective(pMatrix, degToRad(fov),1, 1.0, 1000.0);
     mat4.translate(pMatrix,pMatrix,[0.0, 0.0, -1.0]);
     mat4.identity(mvMatrix);
 
+    repMatrix = mat3.fromValues(2/gl.viewportWidth,0,0,0,-(2/gl.viewportHeight),0,-1,1,1);
+
+    gl.uniform1f(prg.alphaUniform, alpha);
     gl.uniformMatrix4fv(prg.pMatrixUniform, false, pMatrix);
     gl.uniformMatrix4fv(prg.mvMatrixUniform, false, mvMatrix);
+    gl.uniformMatrix3fv(prg.repMatrixUniform,false,repMatrix);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.vertexAttribPointer(prg.vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
