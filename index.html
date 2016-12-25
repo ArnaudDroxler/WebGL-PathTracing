@@ -14,7 +14,6 @@
                 attribute vec3 aVertexPosition;
                 uniform mat4 uPMatrix;
 
-
                 void main(void) {
                     gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);
                 }
@@ -31,14 +30,13 @@
                 vec3 uDir;
                 vec3 uOri =  vec3(0.0,0.0,2.0);
 
-
                 float uSphereRayon = 0.25;
-                vec3 uSpherePos = vec3(0.0,0.8,0.0);
+                uniform vec3 uSpherePos;// = vec3(0.0,0.8,0.0);
 
                 vec3 uBoxMin = vec3(-1.0, -1.0, -1.0);
                 vec3 uBoxMax = vec3(1.0, 1.0, 1.0);
 
-                vec3 uLightPos = vec3(0.4, 0.4, 0.4);
+                vec3 uLightPos = vec3(0.5, 0.4, 0.3);
 
                 vec3 normalForSphere(vec3 hit, vec3 spherePosition, float sphereRayon) {
                     return (hit - spherePosition) / sphereRayon;
@@ -46,16 +44,17 @@
 
                 float intersectSphere( vec3 dir, vec3 origin, vec3 spherePosition, float sphereRayon) {
                     vec3 l = origin - spherePosition;
+                    float a = dot(dir, dir);
                     float b = 2.0 * dot(l, dir);
                     float c = dot(l, l) - sphereRayon*sphereRayon;
-                    float discriminant = b*b - 4.0*c;
+                    float discriminant = b*b - 4.0*c*a;
                     if(discriminant > 0.0) {
-                        float t = (-b-sqrt(discriminant))/2.0;
+                        float t = (-b-sqrt(discriminant))/(2.0*a);
                         if(t > 0.0){
                             return t;
                         }
                     }
-                    return 1000.0;
+                    return 10000.0;
                 }
 
                 float intersectionCube( vec3 dir, vec3 origin, vec3 cubeMin, vec3 cubeMax) {
@@ -89,13 +88,14 @@
                 }
 
                 float shadow(vec3 origin, vec3 dir) {
-                    float tSphere = intersectSphere(dir, origin, uSpherePos, uSphereRayon);
-                    if (tSphere < 1.0){
-                        return 0.0;
-                    }else{
-                        return 1.0;
-                    }
 
+                        float tSphere = intersectSphere( dir , origin, uSpherePos, uSphereRayon);
+                        float tLight = intersectSphere( dir , origin, uLightPos, 0.1);
+                        if ( tSphere < tLight){
+                            return 0.0;
+                        }else{
+                            return 1.0;
+                        }
                 }
 
                 float random(vec3 scale, float seed) {
@@ -120,7 +120,7 @@
                 vec3 raytrace(vec3 dir, vec3 origin){
                     vec3 aColor = vec3(0.0);
                     vec3 colorMask = vec3(1.0);
-                    for(int i = 0 ; i < 5; i++){
+                    for(int i = 0 ; i < 1; i++){
                         //On calcul tout les intersection posible avec les objects de la scene
                         float tBox = intersectionCube(dir,origin, uBoxMin, uBoxMax);
                         float tsphere = intersectSphere(dir,origin,uSpherePos,uSphereRayon);
@@ -143,9 +143,12 @@
 
                         if (t == tBox) {
                                normal = -normalForCube(hit, uBoxMin, uBoxMax);
-                               if (hit.x < uBoxMin.x + 0.00001) surfaceColor = vec3(0.2, 1.0, 0.2);
-                               else if (hit.x > uBoxMax.x - 0.00001) surfaceColor = vec3(1.0, 0.1, 0.1);
-
+                               if (hit.x < uBoxMin.x + 0.00001){
+                                    surfaceColor = vec3(0.2, 1.0, 0.2);
+                               }
+                               else if (hit.x > uBoxMax.x - 0.00001){
+                                    surfaceColor = vec3(1.0, 0.1, 0.1);
+                               }
                         }
                         if (t == tsphere){
                             normal = normalForSphere(hit, uSpherePos, uSphereRayon);
@@ -153,12 +156,12 @@
 
 
                         vec3 lightToHit = normalize(uLightPos - hit);
-                        float diffuse = dot(lightToHit, normal);
-                        float shadowIntensity = shadow(hit + normal*0.001, lightToHit);
+                        float diffuse = max(0.0, dot(lightToHit, normal));
+                        float shadowIntensity = shadow(hit + normal*0.00001, lightToHit);
 
-                        colorMask *= surfaceColor;
-                        aColor +=  shadowIntensity * colorMask * diffuse * 0.5;
-                        aColor += colorMask * specularHighlight * shadowIntensity;
+                        //colorMask *= surfaceColor;
+                        aColor =  shadowIntensity * surfaceColor * diffuse;
+                        //aColor += colorMask * specularHighlight * shadowIntensity;
                         dir = cosineWeightedDirection( float(uTimeSinceStart), normal);
                         origin=hit;
                     }
