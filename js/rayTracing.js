@@ -33,7 +33,7 @@ window.onload = function() {
         alert("Unable to initialize WebGL. Your browser may not support it.");
     }
 
-    canvas.onmousemove = handleMouseMove;
+    repMatrix = mat3.fromValues(2/gl.viewportWidth,0,0,0,-(2/gl.viewportHeight),0,-1,1,1);
     canvas.onmousedown = handleMouseDown;
     canvas.onmouseup = handleMouseUp;
 
@@ -118,6 +118,7 @@ function initBuffers(){
 }
 
 function drawScene(){
+    console.log("Draw Call");
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -133,7 +134,6 @@ function drawScene(){
     mat4.rotate(mvMatrix, mvMatrix,degToRad(rotX), [1, 0, 0]);
     mat4.rotate(mvMatrix, mvMatrix,degToRad(rotY), [0, 1, 0]);
 
-    repMatrix = mat3.fromValues(2/gl.viewportWidth,0,0,0,-(2/gl.viewportHeight),0,-1,1,1);
     var time = new Date().getTime();
 
     var pos = vec3.create();
@@ -195,21 +195,14 @@ function handleMouseMove(event) {
         y: event.clientY
     };
 
+    dX = mousePos.x - oldMousePos.x;
+    dY = mousePos.y - oldMousePos.y;
+
     if (dragging){
-
-        dX = mousePos.x - oldMousePos.x;
-        dY = mousePos.y - oldMousePos.y;
-
-        console.log(dX + "  "+ dY);
         rotY += dX;
         rotX += dY;
-
-        drawScene();
     }
     if(sphereMoving){
-        dX = mousePos.x - oldMousePos.x;
-        dY = mousePos.y - oldMousePos.y;
-
         var posY = dX > 0 ? 0.01*Math.abs(dX)*0.5 : dX < 0 ? -0.01*Math.abs(dX)*0.5 : 0;
         var posX = dY > 0 ? -0.01*Math.abs(dY)*0.5 : dY < 0 ? 0.01*Math.abs(dY)*0.5 : 0;
 
@@ -218,8 +211,8 @@ function handleMouseMove(event) {
         vec3.transformMat4(offset,offset,mvMatrix);
         vec3.add(spherePos,spherePos,offset);
 
-        drawScene();
     }
+    drawScene();
     oldMousePos = mousePos;
 }
 
@@ -236,9 +229,10 @@ function handleMouseDown(event) {
     dragging = !sphereMoving;
     oldMousePos.x = event.clientX;
     oldMousePos.y = event.clientY;
+    canvas.onmousemove = handleMouseMove;
 }
 function handleMouseUp(event){
     dragging = false;
     sphereMoving = false;
-
+    canvas.onmousemove = null;
 }
