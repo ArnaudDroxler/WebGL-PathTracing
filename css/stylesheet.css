@@ -13,17 +13,6 @@
    position: relative;
  }
 
- /*#error {
-   position: absolute;
-   left: 0;
-   top: 0;
-   width: 412px;
-   height: 412px;
-   padding: 50px;
-   text-align: center;
-   background: #DFDFDF;
- }*/
-
  canvas {
    position: absolute;
    left: 0;
@@ -44,17 +33,3 @@
    color: inherit;
  }
 
- #footer {
-   text-align: center;
-   margin: 100px 0 0 0;
- }
-
- #glossiness-factor {
-   display: none;
-   font-size: 12px;
- }
-
- #glossiness-factor input {
-   width: 40px;
-   text-align: center;
- }

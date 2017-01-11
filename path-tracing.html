@@ -6,7 +6,6 @@
         <link rel="stylesheet" href="./css/stylesheet.css">
             <script type="text/javascript" src="./js/gl-matrix.js"></script>
             <script type="text/javascript" src="./js/webgl-debug.js"></script>
-            <script type="text/javascript" src="./js/webgl-utils.js"></script>
             <script type="text/javascript" src="./js/rayTracing.js"></script>
 
             <!-- vertex shader -->
@@ -27,7 +26,7 @@
                 uniform mat3 uRepMatrix;
                 uniform float uAlpha;
                 uniform mat4 uMVMatrix;
-                uniform float uRebond;
+                uniform float uBounce;
 
                 vec3 uDir;
                 vec3 uOri =  vec3(0.0,0.0,2.0);
@@ -128,7 +127,7 @@
                     vec3 surfaceColor = vec3(0.9);
                     float distanceFromTheLight;
                     for(float i=1.0; i<7.0; i+=1.0){
-                        if(i <= uRebond){
+                        if(i <= uBounce){
                         //On calcul tout les intersection posible avec les objects de la scene
                         float tBox = intersectionCube(dir,origin, boxMin, boxMax);
                         float tsphere = intersectSphere(dir,origin,uSpherePos,sphereRayon);
@@ -208,9 +207,9 @@
         <canvas id="glcanvas" width="512" height="512"></canvas>
         <div id="error"><noscript>Please enable JavaScript.</noscript></div>
         <h2>Interaction</h2>
-          <h3><span id="rebondDsiplay">0</span> Rebond</h3>
+          <h3><span id="bounceDisplay">0</span> Rebond</h3>
           <p>
-              <input type="range" name="rebond" id="rebond" min="0" max="5" step="1" value="0" onchange="rebondChange(this.value)" >
+              <input type="range" name="bounce" id="bounce" min="0" max="5" step="1" value="0" onchange="bounceValue(this.value)" >
           </p>
       </div>
   </body>

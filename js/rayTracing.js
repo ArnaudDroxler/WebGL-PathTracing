@@ -3,11 +3,9 @@ var canvas;
 var gl;
 var prg;
 var vertexBuffer = null;
-
 var mvMatrix = mat4.create();
 var pMatrix = mat4.create();
 var repMatrix = mat3.create();
-
 var rotY = 0;
 var rotX = 0;
 var dragging = false;
@@ -15,10 +13,7 @@ var sphereMoving = false;
 var oldMousePos = {x: 0, y: 0};
 var alpha = 0;
 var fov = 70;
-var rebond = 1.0;
-
-var lightMove = false;
-
+var bounce = 1.0;
 var spherePos = vec3.fromValues(0.0,-0.8,0.0);
 var lightPos = vec3.fromValues(0.5,-0.5,0.5);
 
@@ -38,6 +33,7 @@ window.onload = function() {
     }
 
     repMatrix = mat3.fromValues(2/gl.viewportWidth,0,0,0,-(2/gl.viewportHeight),0,-1,1,1);
+    alpha = Math.tan(fov/2*Math.PI/180);
     canvas.onmousedown = handleMouseDown;
     canvas.onmouseup = handleMouseUp;
 
@@ -60,7 +56,6 @@ function initProgram() {
     }
 
     gl.useProgram(prg);
-
     prg.vertexPositionAttribute = gl.getAttribLocation(prg, 'aVertexPosition');
     gl.enableVertexAttribArray(prg.vertexPositionAttribute);
 
@@ -69,8 +64,8 @@ function initProgram() {
     prg.repMatrixUniform        = gl.getUniformLocation(prg, 'uRepMatrix');
     prg.alphaUniform            = gl.getUniformLocation(prg, 'uAlpha');
     prg.spherePosUniform        = gl.getUniformLocation(prg, 'uSpherePos');
-    prg.lightPosUniform        = gl.getUniformLocation(prg, 'uLightPos');
-    prg.rebondUniform           = gl.getUniformLocation(prg, 'uRebond');
+    prg.lightPosUniform         = gl.getUniformLocation(prg, 'uLightPos');
+    prg.bounceUniform           = gl.getUniformLocation(prg, 'uBounce');
 
 }
 
@@ -129,13 +124,10 @@ function drawScene(){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
-    alpha = Math.tan(fov/2*Math.PI/180);
-
     mat4.identity(pMatrix);
     mat4.identity(mvMatrix);
     mat4.perspective(pMatrix, degToRad(fov),1, 1.0, 1000.0);
     mat4.translate(pMatrix,pMatrix,[0.0, 0.0, -1.0]);
-
     mat4.rotate(mvMatrix, mvMatrix,degToRad(rotX), [1, 0, 0]);
     mat4.rotate(mvMatrix, mvMatrix,degToRad(rotY), [0, 1, 0]);
 
@@ -145,13 +137,11 @@ function drawScene(){
     gl.uniform3fv(prg.spherePosUniform,pos);
     vec3.multiply(pos,lightPos,[1.0,-1.0,1.0]);
     gl.uniform3fv(prg.lightPosUniform,pos);
-
     gl.uniform1f(prg.alphaUniform, alpha);
     gl.uniformMatrix4fv(prg.pMatrixUniform, false, pMatrix);
     gl.uniformMatrix4fv(prg.mvMatrixUniform, false, mvMatrix);
     gl.uniformMatrix3fv(prg.repMatrixUniform,false,repMatrix);
-
-    gl.uniform1f(prg.rebondUniform,rebond);
+    gl.uniform1f(prg.bounceUniform,bounce);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.vertexAttribPointer(prg.vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
@@ -168,7 +158,6 @@ function intersectSphere( dir, origin, spherePosition, sphereRayon) {
     var b = 2.0 * vec3.dot(l, dir);
     var c = vec3.dot(l, l) - sphereRayon*sphereRayon;
     var discriminant = b*b - 4.0*c;
-    //console.log(b + " "  + c);
     if(discriminant > 0.0) {
         var t = (-b-Math.sqrt(discriminant))/(2.0);
         if(t > 0.0){
@@ -179,7 +168,6 @@ function intersectSphere( dir, origin, spherePosition, sphereRayon) {
 }
 
 function selectedShepe(pos){
-    //console.log(pos.x + "  " + pos.y);
     var dir = vec3.fromValues(pos.x,pos.y,1.0);
     var ori = vec3.fromValues(0.0,0.0,2.0);
     vec3.transformMat3(dir,dir,repMatrix);
@@ -187,13 +175,8 @@ function selectedShepe(pos){
     vec3.normalize(dir,dir);
     vec3.transformMat4(dir,dir,mvMatrix);
     vec3.transformMat4(ori,ori,mvMatrix);
-
     var tsphere = intersectSphere(dir, ori, spherePos,0.25);
-
-    console.log(tsphere);
-
     return tsphere == 10000 ?  false :  true;
-
 }
 function handleMouseMove(event) {
     var mousePos = {
@@ -212,7 +195,6 @@ function handleMouseMove(event) {
         var posY = dX > 0 ? 0.01*Math.abs(dX)*0.5 : dX < 0 ? -0.01*Math.abs(dX)*0.5 : 0;
         var posX = dY > 0 ? -0.01*Math.abs(dY)*0.5 : dY < 0 ? 0.01*Math.abs(dY)*0.5 : 0;
 
-        //console.log(posX +" " + posY);
         var offset = vec3.fromValues(posY,posX,0.0);
         vec3.transformMat4(offset,offset,mvMatrix);
         vec3.add(spherePos,spherePos,offset);
@@ -229,9 +211,7 @@ function getMousePos(event) {
 
 function handleMouseDown(event) {
     var pos = getMousePos(event);
-
     sphereMoving = selectedShepe(pos);
-
     dragging = !sphereMoving;
     oldMousePos.x = event.clientX;
     oldMousePos.y = event.clientY;
@@ -243,23 +223,9 @@ function handleMouseUp(event){
     canvas.onmousemove = null;
 }
 
-function rebondChange(value){
-    document.getElementById("rebondDsiplay").innerHTML=value;
-    rebond = value;
-    rebond++;
+function bounceValue(value){
+    document.getElementById("bounceDisplay").innerHTML = value;
+    bounce = value;
+    bounce++;
     drawScene();
 }
-
-/*function rotationLight(){
-    var x=0.0;
-    var z=0.0;
-    lightMove != lightMove;
-    if(lightMove){
-
-    }
-        t+= 0.01;
-    x=10.0*Math.cos(t);
-    z=10.0*Math.sin(t);
-    glContext.uniform3f(currentShader.lightPositionUniform, x, 0, z);
-
-}*/
