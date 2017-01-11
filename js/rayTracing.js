@@ -15,8 +15,12 @@ var sphereMoving = false;
 var oldMousePos = {x: 0, y: 0};
 var alpha = 0;
 var fov = 70;
+var rebond = 1.0;
+
+var lightMove = false;
 
 var spherePos = vec3.fromValues(0.0,-0.8,0.0);
+var lightPos = vec3.fromValues(0.5,-0.5,0.5);
 
 window.onload = function() {
     canvas = document.getElementById('glcanvas');
@@ -64,8 +68,9 @@ function initProgram() {
     prg.mvMatrixUniform         = gl.getUniformLocation(prg, 'uMVMatrix');
     prg.repMatrixUniform        = gl.getUniformLocation(prg, 'uRepMatrix');
     prg.alphaUniform            = gl.getUniformLocation(prg, 'uAlpha');
-    prg.timeUniform             = gl.getUniformLocation(prg, 'uTimeSinceStart');
-    prg.spherePosUniform           = gl.getUniformLocation(prg, 'uSpherePos');
+    prg.spherePosUniform        = gl.getUniformLocation(prg, 'uSpherePos');
+    prg.lightPosUniform        = gl.getUniformLocation(prg, 'uLightPos');
+    prg.rebondUniform           = gl.getUniformLocation(prg, 'uRebond');
 
 }
 
@@ -134,18 +139,19 @@ function drawScene(){
     mat4.rotate(mvMatrix, mvMatrix,degToRad(rotX), [1, 0, 0]);
     mat4.rotate(mvMatrix, mvMatrix,degToRad(rotY), [0, 1, 0]);
 
-    var time = new Date().getTime();
 
     var pos = vec3.create();
     vec3.multiply(pos,spherePos,[1.0,-1.0,1.0]);
-
     gl.uniform3fv(prg.spherePosUniform,pos);
+    vec3.multiply(pos,lightPos,[1.0,-1.0,1.0]);
+    gl.uniform3fv(prg.lightPosUniform,pos);
+
     gl.uniform1f(prg.alphaUniform, alpha);
     gl.uniformMatrix4fv(prg.pMatrixUniform, false, pMatrix);
     gl.uniformMatrix4fv(prg.mvMatrixUniform, false, mvMatrix);
     gl.uniformMatrix3fv(prg.repMatrixUniform,false,repMatrix);
 
-    gl.uniform1f(prg.timeUniform,time);
+    gl.uniform1f(prg.rebondUniform,rebond);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.vertexAttribPointer(prg.vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
@@ -236,3 +242,24 @@ function handleMouseUp(event){
     sphereMoving = false;
     canvas.onmousemove = null;
 }
+
+function rebondChange(value){
+    document.getElementById("rebondDsiplay").innerHTML=value;
+    rebond = value;
+    rebond++;
+    drawScene();
+}
+
+/*function rotationLight(){
+    var x=0.0;
+    var z=0.0;
+    lightMove != lightMove;
+    if(lightMove){
+
+    }
+        t+= 0.01;
+    x=10.0*Math.cos(t);
+    z=10.0*Math.sin(t);
+    glContext.uniform3f(currentShader.lightPositionUniform, x, 0, z);
+
+}*/
