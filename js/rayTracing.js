@@ -9,13 +9,16 @@ var repMatrix = mat3.create();
 var rotY = 0;
 var rotX = 0;
 var dragging = false;
-var sphereMoving = false;
+var sphereMoving1 = false;
+var sphereMoving2 = false;
+var lightMoving = false;
 var oldMousePos = {x: 0, y: 0};
 var alpha = 0;
 var fov = 70;
-var bounce = 1.0;
-var spherePos = vec3.fromValues(0.0,-0.8,0.0);
-var lightPos = vec3.fromValues(0.5,-0.5,0.5);
+var bounce = 2.0;
+var spherePos1 = vec3.fromValues(0.0,-0.8,0.0);
+var spherePos2 = vec3.fromValues(0.0,0.8,0.0);
+var lightPos = vec3.fromValues(0.2,0.2,0.2);
 
 window.onload = function() {
     canvas = document.getElementById('glcanvas');
@@ -63,7 +66,8 @@ function initProgram() {
     prg.mvMatrixUniform         = gl.getUniformLocation(prg, 'uMVMatrix');
     prg.repMatrixUniform        = gl.getUniformLocation(prg, 'uRepMatrix');
     prg.alphaUniform            = gl.getUniformLocation(prg, 'uAlpha');
-    prg.spherePosUniform        = gl.getUniformLocation(prg, 'uSpherePos');
+    prg.spherePos1Uniform       = gl.getUniformLocation(prg, 'uSpherePos1');
+    prg.spherePos2Uniform       = gl.getUniformLocation(prg, 'uSpherePos2');
     prg.lightPosUniform         = gl.getUniformLocation(prg, 'uLightPos');
     prg.bounceUniform           = gl.getUniformLocation(prg, 'uBounce');
 
@@ -133,9 +137,11 @@ function drawScene(){
 
 
     var pos = vec3.create();
-    vec3.multiply(pos,spherePos,[1.0,-1.0,1.0]);
-    gl.uniform3fv(prg.spherePosUniform,pos);
-    vec3.multiply(pos,lightPos,[1.0,-1.0,1.0]);
+    vec3.multiply(pos,spherePos1,[-1.0,-1.0,-1.0]);
+    gl.uniform3fv(prg.spherePos1Uniform,pos);
+    vec3.multiply(pos,spherePos2,[-1.0,-1.0,-1.0]);
+    gl.uniform3fv(prg.spherePos2Uniform,pos);
+    vec3.multiply(pos,lightPos,[1.0,-1.0,-1.0]);
     gl.uniform3fv(prg.lightPosUniform,pos);
     gl.uniform1f(prg.alphaUniform, alpha);
     gl.uniformMatrix4fv(prg.pMatrixUniform, false, pMatrix);
@@ -164,10 +170,10 @@ function intersectSphere( dir, origin, spherePosition, sphereRayon) {
             return t;
         }
     }
-    return 10000.0;
+    return 1000.0;
 }
 
-function selectedShepe(pos){
+function selectedShepe(pos,spherePos,rayon){
     var dir = vec3.fromValues(pos.x,pos.y,1.0);
     var ori = vec3.fromValues(0.0,0.0,2.0);
     vec3.transformMat3(dir,dir,repMatrix);
@@ -175,8 +181,8 @@ function selectedShepe(pos){
     vec3.normalize(dir,dir);
     vec3.transformMat4(dir,dir,mvMatrix);
     vec3.transformMat4(ori,ori,mvMatrix);
-    var tsphere = intersectSphere(dir, ori, spherePos,0.25);
-    return tsphere == 10000 ?  false :  true;
+    var tsphere = intersectSphere(dir, ori, spherePos,rayon);
+    return tsphere;
 }
 function handleMouseMove(event) {
     var mousePos = {
@@ -191,14 +197,32 @@ function handleMouseMove(event) {
         rotY += dX;
         rotX += dY;
     }
-    if(sphereMoving){
-        var posY = dX > 0 ? 0.01*Math.abs(dX)*0.5 : dX < 0 ? -0.01*Math.abs(dX)*0.5 : 0;
+    if(sphereMoving1){
+        var posY = dX > 0 ? -0.01*Math.abs(dX)*0.5 : dX < 0 ? 0.01*Math.abs(dX)*0.5 : 0;
         var posX = dY > 0 ? -0.01*Math.abs(dY)*0.5 : dY < 0 ? 0.01*Math.abs(dY)*0.5 : 0;
 
         var offset = vec3.fromValues(posY,posX,0.0);
         vec3.transformMat4(offset,offset,mvMatrix);
-        vec3.add(spherePos,spherePos,offset);
+        vec3.transformMat3(offset,offset,[1,0,0,0,1,0,0,0,-1]);
+        vec3.add(spherePos1,spherePos1,offset);
+    }
+    if(sphereMoving2){
+        var posY = dX > 0 ? -0.01*Math.abs(dX)*0.5 : dX < 0 ? 0.01*Math.abs(dX)*0.5 : 0;
+        var posX = dY > 0 ? -0.01*Math.abs(dY)*0.5 : dY < 0 ? 0.01*Math.abs(dY)*0.5 : 0;
 
+        var offset = vec3.fromValues(posY,posX,0.0);
+        vec3.transformMat4(offset,offset,mvMatrix);
+        vec3.transformMat3(offset,offset,[1,0,0,0,1,0,0,0,-1]);
+        vec3.add(spherePos2,spherePos2,offset);
+    }
+    if(lightMoving){
+        var posY = dX > 0 ? -0.01*Math.abs(dX)*0.5 : dX < 0 ? 0.01*Math.abs(dX)*0.5 : 0;
+        var posX = dY > 0 ? -0.01*Math.abs(dY)*0.5 : dY < 0 ? 0.01*Math.abs(dY)*0.5 : 0;
+
+        var offset = vec3.fromValues(posY,posX,0.0);
+        vec3.transformMat4(offset,offset,mvMatrix);
+        vec3.transformMat3(offset,offset,[-1,0,0,0,1,0,0,0,-1]);
+        vec3.add(lightPos,lightPos,offset);
     }
     drawScene();
     oldMousePos = mousePos;
@@ -211,15 +235,42 @@ function getMousePos(event) {
 
 function handleMouseDown(event) {
     var pos = getMousePos(event);
-    sphereMoving = selectedShepe(pos);
-    dragging = !sphereMoving;
+    tsphere1 = selectedShepe(pos,spherePos1,0.25);
+    tsphere2 = selectedShepe(pos,spherePos2,0.25);
+    tlight = selectedShepe(pos,lightPos,0.05);
+
+    var t = 100.0;
+    if(tsphere1 < t){
+        t = tsphere1;
+    }
+    if(tsphere2 < t){
+        t = tsphere2;
+    }
+    if(tlight < t){
+        t = tlight;
+    }
+    if(t == 100.0){
+        dragging = true;
+    }
+    if (t == tsphere1){
+        sphereMoving1 = true;
+    }
+    if (t == tsphere2){
+        sphereMoving2 = true;
+    }
+    if (t == tlight){
+        lightMoving = true;
+    }
+
     oldMousePos.x = event.clientX;
     oldMousePos.y = event.clientY;
     canvas.onmousemove = handleMouseMove;
 }
 function handleMouseUp(event){
     dragging = false;
-    sphereMoving = false;
+    sphereMoving1 = false;
+    sphereMoving2 = false;
+    lightMoving = false;
     canvas.onmousemove = null;
 }
 

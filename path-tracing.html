@@ -31,7 +31,8 @@
                 vec3 uDir;
                 vec3 uOri =  vec3(0.0,0.0,2.0);
 
-                uniform vec3 uSpherePos;
+                uniform vec3 uSpherePos1;
+                uniform vec3 uSpherePos2;
                 uniform vec3 uLightPos;
 
                 const vec3 boxMin = vec3(-1.0, -1.0, -1.0);
@@ -87,9 +88,14 @@
                 }
 
                 float shadow(vec3 origin, vec3 dir) {
-                        float tSphere = intersectSphere( dir , origin, uSpherePos, sphereRayon);
+
+                        float tSphere1 = intersectSphere( dir , origin, uSpherePos1, sphereRayon);
+                        float tSphere2 = intersectSphere( dir , origin, uSpherePos2, sphereRayon);
                         float tLight = intersectSphere( dir , origin, uLightPos, 0.01);
-                        if ( tSphere < tLight){
+
+                        if ( tSphere1 < tLight){
+                            return 0.0;
+                        }if ( tSphere2 < tLight){
                             return 0.0;
                         }else{
                             return 1.0;
@@ -126,22 +132,42 @@
                     vec3 color = vec3(0.0);
                     vec3 surfaceColor = vec3(0.9);
                     float distanceFromTheLight;
+                    float tlight = intersectSphere(dir,origin,uLightPos,0.05);
+                    if(tlight < 10000.0){
+                        return vec3(1.0);
+                    }
                     for(float i=1.0; i<7.0; i+=1.0){
                         if(i <= uBounce){
                         //On calcul tout les intersection posible avec les objects de la scene
                         float tBox = intersectionCube(dir,origin, boxMin, boxMax);
-                        float tsphere = intersectSphere(dir,origin,uSpherePos,sphereRayon);
+
+                        float tsphere1 = intersectSphere(dir,origin,uSpherePos1,sphereRayon);
+                        float tsphere2 = intersectSphere(dir,origin,uSpherePos2,sphereRayon);
 
                         //On test si le quel est le point d'intersection visible
                         float t = 10000.0;
+
                         if (tBox < t){
                              t = tBox;
                         }
-                        if(tsphere < t){
-                            t = tsphere;
+
+                        if(tsphere1 < t){
+                            t = tsphere1;
+                        }
+                        if(tsphere2 < t){
+                            t = tsphere2;
                         }
 
                         vec3 hit = origin + dir * t;
+
+                        //On calcul la distance entre le point et la lumire pour applique la Loi en carré inverse
+                        vec3 lightToHit = normalize(uLightPos - hit);
+                        if(i == 1.0){
+                            distanceFromTheLight = length(uLightPos - hit);
+                        }else{
+                            distanceFromTheLight += length(origin - hit);
+                        }
+
 
                         //On calcule la normal au point d'intersection
                         vec3 normal;
@@ -154,24 +180,21 @@
                                     surfaceColor = vec3(1.0, 0.1, 0.1);
                                }
                         }
-                        if (t == tsphere){
-                            normal = normalForSphere(hit, uSpherePos, sphereRayon);
+                        if (t == tsphere1){
+                            normal = normalForSphere(hit, uSpherePos1, sphereRayon);
+                             surfaceColor = vec3(0.0, 0.0, 0.0);
+                        }
+                        if (t == tsphere2){
+                            normal = normalForSphere(hit, uSpherePos2, sphereRayon);
                         }
 
-                        //On calcul la distance entre le point et la lumire pour applique la Loi en carré inverse
-                        vec3 lightToHit = normalize(uLightPos - hit);
-                        if(i == 1.0){
-                            distanceFromTheLight = length(uLightPos - hit);
-                        }else{
-                            distanceFromTheLight += length(origin - hit);
-                        }
 
                         //On peut calculer les coefficient des couleurs, l'intensite lumineuse, le diffuse, et l'intensite de l'ombre
                         float lightIntensity = 7.0 / (4.0* pi * distanceFromTheLight);
                         float diffuse = max(0.0, dot(lightToHit, normal));
                         float shadowIntensity = shadow(hit + normal*0.00001, lightToHit);
 
-                        color += surfaceColor  *  diffuse * shadowIntensity * lightIntensity * 1.0/i;
+                        color += surfaceColor * diffuse * shadowIntensity * lightIntensity * 1.0/i;
 
                         dir = getNextDir(normal,i+index);
                         origin=hit;
@@ -204,7 +227,7 @@
           L’algorithme de Path Tracing permet de simuler les rebonds de la lumière a travers la scène. L’application permet plusieurs interactions avec la scène.
       <ul>
           <li>Choisir le nombre de rebonds de la source lumineuse.</li>
-          <li>Sélectionne la sphère et la déplacer dans la scène.</li>
+          <li>Sélectionne une sphère et la déplacer dans la scène.</li>
           <li>Faire tournée la camera dans la scène.</li>
       </ul>
       </p>
@@ -213,9 +236,9 @@
         <canvas id="glcanvas" width="512" height="512"></canvas>
         <div id="error"><noscript>Please enable JavaScript.</noscript></div>
         <h2>Interaction</h2>
-          <h3><span id="bounceDisplay">0</span> Rebond</h3>
+          <h3><span id="bounceDisplay">1</span> Rebond</h3>
           <p>
-              <input type="range" name="bounce" id="bounce" min="0" max="5" step="1" value="0" onchange="bounceValue(this.value)" >
+              <input type="range" name="bounce" id="bounce" min="0" max="5" step="1" value="1" onchange="bounceValue(this.value)" >
           </p>
       </div>
   </body>
